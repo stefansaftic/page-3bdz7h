@@ -852,7 +852,53 @@ let currentEntryIndex = 0;
 let locationTracking = false;
 let watchId = null;
 const tripData = {"id":"meh9xqd2ymk79im8ole","title":"Test Trip","date":"2025-08-25","startTime":"09:00","bufferTime":15,"autoCalculateTime":true,"entries":[{"id":"mekakwwu2mmrk8e36ua","title":"Bismarck-Denkmal","location":"Bismarck-Denkmal","mapsLink":"https://www.google.com/maps?q=50.80609893798828,6.486390113830566","recording":{"shotType":"Static","duration":"23","camera":"Eye level","totalTime":"10min"},"description":"","videoReferences":[],"calculatedTimes":{"arrivalTime":"09:00","setupStart":"09:00","shootStart":"09:15","shootEnd":"09:25","departureTime":"09:25"},"coordinates":{"lat":50.80609893798828,"lng":6.486390113830566},"routeToNext":{"distance":"551 m","duration":"6m","distanceValue":551,"durationValue":396.7,"geometry":"aabuHwzqf@KFAEMo@EBGUqAv@EDEa@Q{@a@wBSLq@^a@Vg@ZOFWEGfAEd@Gp@AJAPMv@YlAWbAQIi@]SMcA_AHSDY@O","instructions":[{"instruction":"Head northwest","distance":6.8,"duration":4.9},{"instruction":"Turn right","distance":2.8,"duration":2},{"instruction":"Continue straight","distance":22.7,"duration":16.4},{"instruction":"Turn right","distance":8.9,"duration":6.4},{"instruction":"Turn left","distance":135.1,"duration":97.3},{"instruction":"Turn left onto Moltkestraße","distance":109.5,"duration":78.8},{"instruction":"Turn left onto Kreuzstraße","distance":147.6,"duration":106.3},{"instruction":"Turn right onto Arnoldsweilerstraße","distance":92.7,"duration":66.8},{"instruction":"Turn right onto Cranachstraße","distance":24.8,"duration":17.8},{"instruction":"Arrive at Cranachstraße, on the left","distance":0,"duration":0}],"elevationGain":0,"elevationLoss":0}},{"id":"mekal5b5z3l3bycmiwk","title":"Stadtmuseum Düren","location":"Stadtmuseum Düren","mapsLink":"https://www.google.com/maps?q=50.80918884277344,6.485899925231934","recording":{"shotType":"Static","duration":"30s","camera":"Eye level","totalTime":"10min"},"description":"","videoReferences":[],"calculatedTimes":{"arrivalTime":"09:32","setupStart":"09:32","shootStart":"09:47","shootEnd":"09:57","departureTime":"09:57"},"coordinates":{"lat":50.80918884277344,"lng":6.485899925231934},"routeToNext":{"distance":"1.4 km","duration":"17m","distanceValue":1439.2,"durationValue":1036.2,"geometry":"qsbuHwwqf@ANEXIRbA~@RLh@\\PHVcAXmALw@@Q@KFq@De@FgAVDNGf@[`@Wp@_@RM\\STM^UnAq@|A}@t@a@DClAs@r@a@PKDG@IS}A?KBIhB}@]mBNG`EuBlBgA`@U\\GlA\\dEvBfDdBX@ThANPl@n@FNg@RDj@?T","instructions":[{"instruction":"Head west on Cranachstraße","distance":24.8,"duration":17.8},{"instruction":"Turn left onto Arnoldsweilerstraße","distance":92.7,"duration":66.8},{"instruction":"Turn left onto Kreuzstraße","distance":147.6,"duration":106.3},{"instruction":"Turn right onto Moltkestraße","distance":503.8,"duration":362.7},{"instruction":"Turn left onto Kölnstraße, B 264","distance":41.7,"duration":30},{"instruction":"Turn right onto Dr.-Kotthaus-Straße","distance":211.7,"duration":152.4},{"instruction":"Keep right","distance":16.9,"duration":12.2},{"instruction":"Turn slight right onto Van-der-Giese-Straße","distance":276.6,"duration":199.1},{"instruction":"Turn right onto Oststraße","distance":28.6,"duration":20.6},{"instruction":"Keep left onto Bonner Platz","distance":48.9,"duration":35.2},{"instruction":"Turn sharp right onto Frankenstraße","distance":22.5,"duration":16.2},{"instruction":"Turn left onto Bonner Platz","distance":23.4,"duration":16.9},{"instruction":"Arrive at Bonner Platz, on the right","distance":0,"duration":0}],"elevationGain":0,"elevationLoss":0}},{"id":"mekale2l96agsqxh46b","title":"Bonnkreuz","location":"Bonnkreuz","mapsLink":"https://www.google.com/maps?q=50.79990005493164,6.489160060882568","recording":{"shotType":"Static","duration":"30s","camera":"Eye level","totalTime":"10min"},"description":"","videoReferences":[],"calculatedTimes":{"arrivalTime":"10:07","setupStart":"10:07","shootStart":"10:22","shootEnd":"10:32","departureTime":"10:32"},"coordinates":{"lat":50.79990005493164,"lng":6.489160060882568}}],"city":"Dueren, Germany"};
-const mapBounds = {"north":50.80918884277344,"south":50.79990005493164,"east":6.489160060882568,"west":6.485899925231934};
+const mapBounds = {"minX":16974,"maxX":16974,"minY":10997,"maxY":10999,"zoom":15,"bounds":{"minLat":50.79878540039063,"maxLat":50.81030349731445,"minLng":6.485508708953858,"maxLng":6.489551277160644}};
+const tileBounds = {"minX":16974,"maxX":16974,"minY":10997,"maxY":10999,"zoom":15,"bounds":{"minLat":50.79878540039063,"maxLat":50.81030349731445,"minLng":6.485508708953858,"maxLng":6.489551277160644}};
+
+
+// Tile-based coordinate conversion (matches OSM map generation)
+function latLngToTile(lat, lng, zoom) {
+    const latRad = lat * Math.PI / 180;
+    const n = Math.pow(2, zoom);
+    const x = Math.floor((lng + 180) / 360 * n);
+    const y = Math.floor((1 - Math.asinh(Math.tan(latRad)) / Math.PI) / 2 * n);
+    return { x, y, zoom };
+}
+
+function tileToLatLng(x, y, zoom) {
+    const n = Math.pow(2, zoom);
+    const lng = x / n * 360 - 180;
+    const latRad = Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n)));
+    const lat = latRad * 180 / Math.PI;
+    return { lat, lng };
+}
+
+// Precise coordinate to pixel conversion (same as OSMTileStitcher)
+function coordinateToPixel(lat, lng, bounds, displayWidth, displayHeight) {
+    const tileSize = 256;
+    const scale = 2;
+    
+    // Convert to tile coordinates
+    const tile = latLngToTile(lat, lng, bounds.zoom);
+    const x = (tile.x - bounds.minX) * tileSize * scale;
+    const y = (tile.y - bounds.minY) * tileSize * scale;
+    
+    // Calculate sub-pixel position within tile
+    const tileBounds = tileToLatLng(tile.x, tile.y, bounds.zoom);
+    const nextTileBounds = tileToLatLng(tile.x + 1, tile.y + 1, bounds.zoom);
+    
+    const tileLatSpan = tileBounds.lat - nextTileBounds.lat;
+    const tileLngSpan = nextTileBounds.lng - tileBounds.lng;
+    
+    const subX = ((lng - tileBounds.lng) / tileLngSpan) * tileSize * scale;
+    const subY = ((tileBounds.lat - lat) / tileLatSpan) * tileSize * scale;
+    
+    // Scale to display dimensions
+    const pixelX = (x + subX) * displayWidth / 512;
+    const pixelY = (y + subY) * displayHeight / 1536;
+    
+    return { x: Math.round(pixelX), y: Math.round(pixelY) };
+}
 
 // Initialize mobile app
 document.addEventListener('DOMContentLoaded', function() {
@@ -870,6 +916,7 @@ function initializeMobileApp() {
     addScrollListeners();
     
     console.log('Mobile timeline initialized with ' + tripData.entries.length + ' entries');
+    console.log('Using coordinate system:', tileBounds ? 'Tile-based (accurate)' : 'Simple bounds (fallback)');
 }
 
 // Location tracking functions
@@ -973,16 +1020,26 @@ function updateLocationStatus(message, type) {
 }
 
 function updateLocationMarkers(lat, lng) {
-    // Update overview map marker
+    // Update overview map marker using precise coordinate conversion
     const overviewMarker = document.getElementById('overviewLocationMarker');
-    if (overviewMarker && mapBounds) {
-        const position = coordinateToPixel(lat, lng, mapBounds, 800, 600);
-        if (position.x >= 0 && position.x <= 800 && position.y >= 0 && position.y <= 600) {
-            overviewMarker.style.left = position.x + 'px';
-            overviewMarker.style.top = position.y + 'px';
-            overviewMarker.style.display = 'block';
-        } else {
-            overviewMarker.style.display = 'none';
+    if (overviewMarker && (tileBounds || mapBounds)) {
+        const mapElement = document.querySelector('.overview-map');
+        if (mapElement) {
+            const displayWidth = mapElement.clientWidth;
+            const displayHeight = mapElement.clientHeight;
+            
+            const position = coordinateToPixel(lat, lng, tileBounds || mapBounds, displayWidth, displayHeight);
+            
+            if (position.x >= 0 && position.x <= displayWidth && position.y >= 0 && position.y <= displayHeight) {
+                overviewMarker.style.left = position.x + 'px';
+                overviewMarker.style.top = position.y + 'px';
+                overviewMarker.style.display = 'block';
+                
+                console.log(`GPS marker positioned at (${position.x}, ${position.y}) on ${displayWidth}x${displayHeight} map`);
+            } else {
+                overviewMarker.style.display = 'none';
+                console.log(`GPS position out of map bounds: (${position.x}, ${position.y})`);
+            }
         }
     }
 }
@@ -992,19 +1049,6 @@ function hideLocationMarkers() {
     if (overviewMarker) {
         overviewMarker.style.display = 'none';
     }
-}
-
-// Coordinate conversion
-function coordinateToPixel(lat, lng, bounds, width, height) {
-    if (!bounds) return { x: -1, y: -1 };
-    
-    const latRange = bounds.north - bounds.south;
-    const lngRange = bounds.east - bounds.west;
-    
-    const x = ((lng - bounds.west) / lngRange) * width;
-    const y = ((bounds.north - lat) / latRange) * height;
-    
-    return { x: Math.round(x), y: Math.round(y) };
 }
 
 // Proximity checking
